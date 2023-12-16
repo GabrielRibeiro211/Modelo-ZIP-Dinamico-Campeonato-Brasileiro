@@ -1,0 +1,317 @@
+---
+title: "2022 Brazilian League"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+    theme: flatly
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+ataque <- read.csv("ataque.csv")
+ataque <- ataque[,-1]
+defesa <- read.csv("defesa.csv")
+defesa <- defesa[,-1]
+
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(reshape)
+library(shiny)
+
+bra22 <- read.csv("BRA (1).csv")
+bra_22 <- bra22 %>% filter(Season == 2022)
+
+ng = nrow(bra_22) # Number of games
+nt = length(unique(bra_22$Home))
+
+#Convert team names for each match into numbers
+teams = unique(bra_22$Away)
+ht = unlist(sapply(1:ng, function(g) which(teams == bra_22$Home[g])))
+at = unlist(sapply(1:ng, function(g) which(teams == bra_22$Away[g])))
+nomes <- c('SAN','FLA','CEA','GOI','INT','COR','CUI','AME','CAP','BRA','PAL','JUV','AVA','FLU','CTB','SAO','CAM','ACG','FOR','BOT')
+
+comb <- read.csv("comb.csv")
+
+g <- read.csv("g.csv")
+
+```
+
+Dynamic ZIP Model
+==========================
+
+Row {data-width=50}
+-----------------------------------------------------------------------
+
+### Infos
+
+```{r}
+valueBox("Palmeiras","Champion", icon = "fa-futbol-o", color = "lime",
+  href = NULL)
+
+```
+
+### Infos
+```{r}
+valueBox( 905, "Total Goals", icon = "fa-futbol-o", color = "lime",
+  href = NULL)
+
+```
+
+
+### Infos
+```{r}
+valueBox( 2.38, "Goals per Game", icon = "fa-futbol-o", color = "lime",
+  href = NULL)
+
+```
+
+
+
+Row {data-width=650}
+-----------------------------------------------------------------------
+
+### ATTACK
+
+```{r, fig.height=6}
+med_att <- vector()
+q10_att <- vector()
+q90_att <- vector()
+for (i in 1:20) {
+  med_att[i] <- mean(ataque[,i])
+  q10_att[i] <- quantile(ataque[,i], 0.1)
+  q90_att[i] <- quantile(ataque[,i], 0.9)
+  
+}
+
+
+dados_att <- data.frame(Acronym = nomes, Mean = med_att, q10 = q10_att, q90 = q90_att, Team = teams)
+
+renderPlotly({
+  g=ggplot(dados_att, aes(y = Acronym, x = Mean))+
+  geom_point(aes(color = Team))+
+  geom_errorbar(aes(xmin = q10, xmax = q90))+
+  scale_color_manual(values = c("darkgreen", "red", "black", "red3", "lightblue", "black", "red", "grey10", "black", "mediumseagreen",
+                                "green", "red3", "orange", "blue", "seagreen1", "red2", "lightgreen", "green", "black",
+                                "red"))+
+  theme_light()+
+  labs(title = "Attack Power Comparison", color = "TEAMS", x = "ATTACK", y = "TEAMS")+
+  geom_vline(xintercept = 0, lwd = 1, color = "yellow")
+ggplotly(g)})
+
+```
+
+### DEFENSE
+
+```{r, fig.height=6}
+med_def <- vector()
+q10_def <- vector()
+q90_def <- vector()
+for (i in 1:20) {
+  med_def[i] <- mean(defesa[,i])
+  q10_def[i] <- quantile(defesa[,i], 0.1)
+  q90_def[i] <- quantile(defesa[,i], 0.9)
+  
+}
+
+dados_def <- data.frame(Acronym = nomes, Mean = med_def, q10 = q10_def, q90 = q90_def, Team = teams)
+
+renderPlotly({
+  g=ggplot(dados_def, aes(y = Acronym, x = Mean))+
+  geom_point(aes(color = Team))+
+  geom_errorbar(aes(xmin = q10, xmax = q90))+
+  scale_color_manual(values = c("darkgreen", "red", "black", "red3", "lightblue", "black", "red", "grey10", "black", "mediumseagreen",
+                                "green", "red3", "orange", "blue", "seagreen1", "red2", "lightgreen", "green", "black",
+                                "red"))+
+  theme_light()+
+  labs(title = "Defense Power Comparison", color = "TEAMS", x = "DEFENSE", y = "TEAMS")+
+  geom_vline(xintercept = 0, lwd = 1, color = "yellow")
+ggplotly(g)})  
+```
+
+Row {data-width=300}
+-----------------------------------------------------------------------
+
+### GOALS
+
+```{r, fig.width= 15, fig.height= 4}
+boxplot(bra_22[,8]~bra_22[,6],xaxt = "n", boxfill = NA, border = NA, ylab="GOALS",xlab="TEAM", main="Home/Away Goals Made By Each Team") #invisible boxes - only axes and plot area
+boxplot(AG~Away,data = bra_22,xaxt = "n", add = TRUE, boxfill=rgb(0.8,0.1,0.3,0.6), boxwex=0.4, at = 1:20 - 0.222) #shift these left by -0.15
+boxplot(HG~Home,data = bra_22, xaxt = "n", add = TRUE, boxfill=rgb(0.1,0.1,0.7,0.5), boxwex=0.4, at = 1:20 + 0.27) #shift to the right by +0.15
+legend("topleft",c("HOME","AWAY"),col=c(rgb(0.1,0.1,0.7,0.5),rgb(0.8,0.1,0.3,0.6)),pch=15)
+axis(1, at=1:20, label= c('AME','CAP','CAM','ACG','AVA','BOT','BRA','CEA','COR','CTB','CUI','FLA','FLU','FOR','GOI','INT','JUV','PAL','SAN','SAO'))
+
+
+```
+
+
+
+Parameter Evolution
+==================================
+
+```{r, include=FALSE}
+prms <- read.csv("prms.csv")
+```
+
+
+Inputs {.sidebar}
+--------
+
+```{r}
+selectInput("Team", label = "Team:",
+            choices = unique(prms$Team), selected = "Palmeiras")
+
+#sliderInput("Time", label = "Time:",
+#            min = 1, max = 8, value = 8, step = 1)
+```
+
+Row {data-width=50}
+-----------------------------------------------------------------------
+
+### Goals Made
+
+```{r}
+aux1 <- NULL
+renderValueBox({aux1 = filter(g, team == input$Team)
+  valueBox(paste(aux1$gm), "Goals Made", icon = "fa-futbol-o", color = "red",
+  href = NULL)})
+
+```
+
+### Goals Allowed
+
+```{r}
+aux2 <- NULL
+renderValueBox({aux2 = filter(g, team == input$Team)
+  valueBox(paste(aux2$ga), "Goals Allowed", icon = "fa-futbol-o", color = "blue",
+  href = NULL)})
+
+```
+
+
+Row {data-width=475}
+-----------------------------------------------------------------------
+
+### Attack Evolution
+
+```{r}
+renderPlotly({
+  g = filter(prms, Team == input$Team)%>%
+  ggplot(., aes(x=Round, y=Attack, group=1)) +
+  geom_line(col = "red")+
+  geom_point()+
+  labs(x = 'Round', y = 'Attack Parameter')+
+  theme_light()+
+  scale_color_manual(values = c("darkgreen", "red", "black", "red3", "lightblue", "black", "red", "grey10", "black", "mediumseagreen",
+                                "green", "red3", "orange", "blue", "seagreen1", "red2", "lightgreen", "green", "black",
+                                "red"))
+ggplotly(g)
+})
+
+
+```
+
+### Attack Evolution Comparison
+
+```{r}
+renderPlotly({
+  g = ggplot(prms, aes(x=Round, y=Attack, group=Team)) +
+  geom_line(aes(col = Team))+
+  geom_point()+
+  labs(x = 'Round', y = 'Attack Parameter')+
+  theme_light()+
+  scale_color_manual(values = c("darkgreen", "red", "black", "red3", "lightblue", "black", "red", "grey10", "black", "mediumseagreen",
+                                "green", "red3", "orange", "blue", "seagreen1", "red2", "lightgreen", "green", "black",
+                                "red"))
+ggplotly(g)
+})
+
+#filter(prms, Team == input$Team)%>%
+```
+
+
+Row {data-width=475}
+-----------------------------------------------------------------------
+
+### Defense Evolution
+
+```{r}
+renderPlotly({
+  g = filter(prms, Team == input$Team)%>%
+  ggplot(., aes(x=Round, y=Defense, group=1)) +
+  geom_line(col = 'blue')+
+  geom_point()+
+  labs(x = 'Round', y = 'Defense Parameter')+
+  theme_light()
+ggplotly(g)
+})
+```
+
+
+### Defense Evolution Comparison
+
+```{r}
+renderPlotly({
+  g = ggplot(prms, aes(x=Round, y=Defense, group=Team)) +
+  geom_line(aes(col = Team))+
+  geom_point()+
+  labs(x = 'Round', y = 'Defense Parameter')+
+  theme_light()+
+  scale_color_manual(values = c("darkgreen", "red", "black", "red3", "lightblue", "black", "red", "grey10", "black", "mediumseagreen",
+                                "green", "red3", "orange", "blue", "seagreen1", "red2", "lightgreen", "green", "black",
+                                "red"))
+ggplotly(g)
+})
+
+#filter(prms, Team == input$Team)%>%
+```
+
+
+
+Match Predictions
+================================
+
+Inputs {.sidebar}
+--------
+
+```{r}
+selectInput("Match", label = "Match:",
+            choices = unique(comb$Match), selected = "Corinthians x Athletico-PR")
+
+```
+
+
+Row {data-width=800}
+-----------------------------------------------------------------------
+
+### Heatmap for Predictions
+
+```{r, fig.height=8}
+renderPlotly({
+  g = filter(comb, Match == input$Match) %>%
+  ggplot(., aes(X1,X2))+
+  geom_tile(aes(fill = Freq))+
+  scale_fill_gradient(low="skyblue", high="darkblue")+
+  labs( x = "Home", y = "Away", fill = 'Frequency')+
+  theme_light()
+ggplotly(g)
+})
+```
+
+Row {data-width=200}
+-----------------------------------------------------------------------
+
+### Match Result
+
+```{r}
+
+h <- bra_22[,6:9]
+b <- NULL
+renderValueBox({b = filter(comb, Match == input$Match)
+  h = filter(bra_22, Home == unique(b$Time1), Away == unique(b$Time2))
+  valueBox(paste(h$Home, h$HG, "X", h$AG, h$Away), "Match Result", icon = "fa-futbol-o", color = "aqua",
+  href = NULL)})
+
+```
