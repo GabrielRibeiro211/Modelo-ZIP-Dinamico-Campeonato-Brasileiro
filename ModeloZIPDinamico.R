@@ -2,7 +2,7 @@ library(dplyr)
 library(rstan)
 
 # Leitura da base de dados
-bra22 <- `BRA.(1)`
+bra22 <- read.csv("https://raw.githubusercontent.com/GabrielRibeiro211/Modelo-ZIP-Dinamico-Campeonato-Brasileiro/main/BRA_2022.csv")
 bra_22 <- bra22 %>% filter(Season == 2022) # Especificar o campeonato de 2022
 
 ng = nrow(bra_22) # Número de jogos
